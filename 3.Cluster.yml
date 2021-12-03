@@ -1,0 +1,13 @@
+Parameters:
+   ProjectName:
+    Type: String 
+    Default: ECSdemo
+  ECSClusterName:
+    Type: String
+    Default: ECSClusterName
+Resources:
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties:
+      ClusterName: !Sub "${ProjectName}-${ECSClusterName}"
+

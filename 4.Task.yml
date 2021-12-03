@@ -1,0 +1,126 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project Name Prefix
+        Parameters:
+          - ProjectName
+      - Label:
+          default: Fargate for ECS Configuration
+        Parameters:
+          - ECSTaskName
+          - ECSTaskCPUUnit
+          - ECSTaskMemory
+          - ECSContainerName
+          - ECSImageName
+      - Label:
+          default: Netowork Configuration
+        Parameters:
+          - VpcId
+          - ECSSubnetId1
+          - ECSSubnetId2
+
+Parameters:
+#projectName
+  ProjectName:
+    Default: ECSdemo
+    Type: String
+
+#VPCID
+  VpcId:
+    Description : VPC ID
+    Type: AWS::EC2::VPC::Id
+
+#ECSSubnet1
+  ECSSubnetId1:
+    Description : "ECS Subnet 1st"
+    Type : AWS::EC2::Subnet::Id
+
+#ECSSubnet2
+  ECSSubnetId2:
+    Description : "ECS Subnet 2st"
+    Type : AWS::EC2::Subnet::Id
+
+
+#ECSTaskName
+  ECSTaskName:
+    Type: String
+    Default: task
+
+#ECSTaskCPUUnit
+  ECSTaskCPUUnit:
+    AllowedValues: [ 256, 512, 1024, 2048, 4096  ]
+    Type: String
+    Default: 256
+
+#ECSTaskMemory
+  ECSTaskMemory:
+    AllowedValues: [ 256, 512, 1024, 2048, 4096  ]
+    Type: String
+    Default: 512
+
+#ECSContainerName
+  ECSContainerName:
+    Type: String
+    Default: container
+
+#ECSImageName
+  ECSImageName:
+    Type: String
+    Default: xxxxxxxxxxxx.dkr.ecr.ap-northeast-1.amazonaws.com/demo-ecr:latest
+
+
+
+
+Resources:
+# ------------------------------------------------------------#
+#  ECS LogGroup
+# ------------------------------------------------------------#
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /ecs/logs/${ProjectName}-ecs-group
+#TaskRole
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub ${ProjectName}-ECSTaskExecutionRolePolicy
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+#TaskDefinitions
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Cpu: !Ref ECSTaskCPUUnit
+      ExecutionRoleArn: !Ref ECSTaskExecutionRole
+      Family: !Sub ${ProjectName}-${ECSTaskName}
+      Memory: !Ref ECSTaskMemory
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+
+#ContainerDefinitions
+      ContainerDefinitions:
+        - Name: !Sub ${ProjectName}-${ECSContainerName}
+          Image: !Ref ECSImageName
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: !Ref ProjectName
+          MemoryReservation: 128
+          PortMappings:
+            - HostPort: 80
+              Protocol: tcp
+              ContainerPort: 80
+

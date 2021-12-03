@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Project Name Prefix
+        Parameters:
+          - ProjectName
+      - Label:
+          default: InternetALB Configuration
+        Parameters:
+          - InternetALBName
+          - TargetGroupName
+      - Label:
+          default: "Fargate for ECS Configuration"
+        Parameters:
+          - ECSServiceName
+          - ECSTaskDesiredCount
+      - Label:
+          default: "Netowork Configuration"
+        Parameters:
+          - ECSSecurityGroupId
+          - ECSSubnetId1
+          - ECSSubnetId2
+    ParameterLabels:
+      TargetGroupName:
+        default: TargetGroupName
+
+Parameters:
+  ECSSubnetId1:
+    Description: Specify Subnet1 Id for ALB
+    Type: AWS::EC2::Subnet::Id
+  ECSSubnetId2:
+    Description: Specify Subnet2 Id for ALB
+    Type: AWS::EC2::Subnet::Id
+  ECSSecurityGroupId:
+    Description: Specify SG for Service
+    Type: AWS::EC2::SecurityGroup::Id
+  TargetGroup:
+    Description: Specify target group for Service
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup:Id
+  ECSTaskDefinition:
+    Description: Specify Task for Service
+    Type: AWS::ECS::TaskDefinition:ID
+  ECSTaskDesiredCount:
+    Type: Number
+    Default: 2
+
+
+Resources:
+  ECSService:
+    Type: AWS::ECS::Service
+    #DependsOn: ALBListener
+    Properties:
+      Cluster: !Ref ECSCluster
+      DesiredCount: !Ref ECSTaskDesiredCount
+      LaunchType: FARGATE
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroup
+          ContainerPort: 80
+          ContainerName: !Sub "${ProjectName}-${ECSContainerName}"
+      NetworkConfiguration:
+       AwsvpcConfiguration:
+           AssignPublicIp: ENABLED
+           SecurityGroups:
+             - !Ref ECSSecurityGroupId
+           Subnets:
+             - !Ref ECSSubnetId1
+             - !Ref ECSSubnetId2
+      ServiceName: !Sub "${ProjectName}-${ECSServiceName}"
+      TaskDefinition: !Ref ECSTaskDefinition
